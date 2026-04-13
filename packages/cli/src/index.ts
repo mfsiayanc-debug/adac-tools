@@ -79,7 +79,7 @@ export function runCLI(options: CLIOptions) {
   program
     .command('diagram <file>')
     .description('Generate diagram from ADAC YAML file')
-    .option('-l, --layout <type>', 'Layout engine (elk or dagre)', 'elk')
+    .option('-l, --layout <type>', 'Layout engine (elk or custom')
     .option('-o, --output <path>', 'Output SVG file path')
     .option('--validate', 'Validate schema before generating')
     .option('--cost', 'Print cost breakdown and generate diagram')
@@ -117,7 +117,7 @@ export function runCLI(options: CLIOptions) {
           }
         }
 
-        const layout = opts.layout as 'elk' | 'dagre';
+        const layout = opts.layout as 'elk' | 'custom';
 
         let outputPath: string = opts.output;
         if (!outputPath) {

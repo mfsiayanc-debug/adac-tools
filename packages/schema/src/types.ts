@@ -126,5 +126,5 @@ export interface AdacConfig {
   };
   connections?: AdacConnection[];
   cost?: Record<string, unknown>;
-  layout?: 'elk' | 'dagre';
+  layout?: 'elk' | 'custom'
 }

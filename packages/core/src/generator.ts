@@ -15,7 +15,7 @@ export interface GenerationResult {
 
 export async function generateDiagramSvg(
   inputContent: string,
-  layoutOverride?: 'elk' | 'dagre',
+  layoutOverride?: 'elk' | 'custom',
   validate: boolean = false,
   costData?: Record<string, number>,
   period: CostPeriod = 'monthly'
@@ -45,7 +45,7 @@ export async function generateDiagramSvg(
     log('Parsing complete.');
 
     log('Building ELK Graph structure...');
-    const graph = buildElkGraph(adac);
+    const graph = (layoutOverride === 'elk') ? buildElkGraph(adac) : ;
     log(`Graph built with ${graph.children?.length || 0} top-level nodes.`);
 
     const engine = layoutOverride || adac.layout || 'elk';
@@ -123,7 +123,7 @@ export async function generateDiagramSvg(
 export async function generateDiagram(
   input: string,
   output: string,
-  layoutOverride?: 'elk' | 'dagre',
+  layoutOverride?: 'elk' | 'custom',
   validate: boolean = false,
   costData?: Record<string, number>,
   period: CostPeriod = 'monthly'
