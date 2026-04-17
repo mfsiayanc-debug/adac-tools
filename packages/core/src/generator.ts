@@ -1,9 +1,10 @@
 import fs from 'fs-extra';
 import { parseAdacFromContent } from '@mindfiredigital/adac-parser';
 import { buildElkGraph } from '@mindfiredigital/adac-layout-elk';
-import { validateAdacConfig } from '@mindfiredigital/adac-schema';
+import { createLayoutEngine } from '@mindfiredigital/adac-layout';
+import { AdacConfig, validateAdacConfig } from '@mindfiredigital/adac-schema';
 import { ComplianceChecker } from '@mindfiredigital/adac-compliance';
-import { renderSvg } from './renderer.js';
+import { renderSvg, renderSvgFromLayout } from './renderer.js';
 
 type CostPeriod = 'hourly' | 'daily' | 'monthly' | 'yearly';
 
@@ -45,8 +46,13 @@ export async function generateDiagramSvg(
     log('Parsing complete.');
 
     log('Building ELK Graph structure...');
-    const graph = (layoutOverride === 'elk') ? buildElkGraph(adac) : ;
+    
+    const graph = buildElkGraph(adac);
+    const layout = await generateDiagramFromAdac(adac);
     log(`Graph built with ${graph.children?.length || 0} top-level nodes.`);
+    log(`graph built with ${graph}`);
+    // log(`layout built with ${layout}`);
+
 
     const engine = layoutOverride || adac.layout || 'elk';
     log(`Layout engine selected: ${engine}`);
@@ -97,13 +103,20 @@ export async function generateDiagramSvg(
     const perServiceCosts = costData;
 
     log('Rendering SVG (Computing Layout & Styles)...');
-    const svg = await renderSvg(
+    const svg = (layoutOverride === 'elk') ? await renderSvg(
       graph,
       engine,
       complianceTooltipMap,
       perServiceCosts,
       period
-    );
+    ) : renderSvgFromLayout(layout);
+    // const svg = await renderSvg(
+    //   graph,
+    //   engine,
+    //   complianceTooltipMap,
+    //   perServiceCosts,
+    //   period
+    // );
     log('SVG Rendering complete.');
 
     // Removed cost summary injection
@@ -113,6 +126,7 @@ export async function generateDiagramSvg(
 
     return { svg, logs, duration };
   } catch (e: unknown) {
+    log(`${e}`); 
     const error = e instanceof Error ? e : new Error(String(e));
     log(`Error: ${error.message}`);
     (error as Error & { logs?: string[] }).logs = logs;
@@ -139,4 +153,59 @@ export async function generateDiagram(
 
   await fs.outputFile(output, svg);
   console.log(`Diagram generated: ${output}`);
+}
+
+export async function generateDiagramFromAdac(
+  adac: AdacConfig
+) {
+  // 1. Create engine (auto/custom/elk)
+  const engine = await createLayoutEngine(
+    adac.layout || 'auto',
+    { rankdir: 'TB' },
+    adac
+  );
+
+  // 2. Convert ADAC → nodes
+  addNodesToEngine(engine, adac);
+
+  // 3. Convert ADAC → edges
+  addEdgesToEngine(engine, adac);
+
+  // 4. Run layout
+  const layout = await engine.layout();
+
+  console.log("layout", JSON.stringify(layout))
+
+  return layout;
+}
+
+function addNodesToEngine(engine: any, adac: AdacConfig) {
+  // 🔹 Applications
+  for (const app of adac.applications || []) {
+    engine.addNode(app.id, {
+      width: 100,
+      height: 60,
+    });
+  }
+
+  // 🔹 Infrastructure services
+  for (const cloud of adac.infrastructure.clouds || []) {
+    for (const service of cloud.services || []) {
+      engine.addNode(service.id, {
+        width: 120,
+        height: 70,
+      });
+    }
+  }
+}
+
+function addEdgesToEngine(engine: any, adac: AdacConfig) {
+  for (const conn of adac.connections || []) {
+    const from = conn.from || conn.source;
+    const to = conn.to || conn.target;
+
+    if (!from || !to) continue;
+
+    engine.addEdge(from, to);
+  }
 }

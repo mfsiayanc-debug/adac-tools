@@ -99,6 +99,26 @@ export class CustomLayoutEngine {
   /**
    * Compute diagram bounds
    */
+  //   private calculateBounds(positions: Record<string, NodePosition>): {
+  //     width: number;
+  //     height: number;
+  //   } {
+  //     let maxX = 0;
+  //     let maxY = 0;
+
+  //     Object.values(positions).forEach((node) => {
+  //       const right = node.x + node.width;
+  //       const bottom = node.y + node.height;
+
+  //       if (right > maxX) maxX = right;
+  //       if (bottom > maxY) maxY = bottom;
+  //     });
+
+  //     return {
+  //       width: maxX + this.options.marginx,
+  //       height: maxY + this.options.marginy,
+  //     };
+  //   }
   private calculateBounds(positions: Record<string, NodePosition>): {
     width: number;
     height: number;
@@ -106,17 +126,14 @@ export class CustomLayoutEngine {
     let maxX = 0;
     let maxY = 0;
 
-    Object.values(positions).forEach((node) => {
-      const right = node.x + node.width;
-      const bottom = node.y + node.height;
-
-      if (right > maxX) maxX = right;
-      if (bottom > maxY) maxY = bottom;
+    Object.values(positions).forEach((n) => {
+      maxX = Math.max(maxX, n.x + n.width);
+      maxY = Math.max(maxY, n.y + n.height);
     });
 
     return {
-      width: maxX + this.options.marginx,
-      height: maxY + this.options.marginy,
+      width: maxX + 100,
+      height: maxY + 100,
     };
   }
 }

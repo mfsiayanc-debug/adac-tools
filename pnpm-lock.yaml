@@ -159,9 +159,9 @@ importers:
         specifier: ^0.11.0
         version: 0.11.0
     devDependencies:
-      '@mindfiredigital/adac-layout-core':
+      '@mindfiredigital/adac-layout':
         specifier: workspace:*
-        version: link:../layout-core
+        version: link:../layout
       '@mindfiredigital/adac-layout-dagre':
         specifier: workspace:*
         version: link:../layout-dagre
@@ -205,6 +205,9 @@ importers:
       '@mindfiredigital/adac-compliance':
         specifier: workspace:*
         version: link:../compliance
+      '@mindfiredigital/adac-core':
+        specifier: workspace:*
+        version: link:../core
       '@mindfiredigital/adac-cost':
         specifier: workspace:*
         version: link:../cost
@@ -221,9 +224,6 @@ importers:
       '@mindfiredigital/adac-cli':
         specifier: workspace:*
         version: link:../cli
-      '@mindfiredigital/adac-core':
-        specifier: workspace:*
-        version: link:../core
       '@types/fs-extra':
         specifier: ^11.0.4
         version: 11.0.4

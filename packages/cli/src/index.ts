@@ -18,7 +18,7 @@ export type CLIOptions = {
   generateDiagram: (
     input: string,
     output: string,
-    layoutOverride?: 'elk' | 'dagre',
+    layoutOverride?: 'elk' | 'custom',
     validate?: boolean,
     costData?: Record<string, number>,
     period?: CostPeriod,
@@ -155,6 +155,7 @@ export function runCLI(options: CLIOptions) {
           }
         });
       } catch (error: unknown) {
+        console.error('Error generating diagram:', error);
         const message = error instanceof Error ? error.message : String(error);
         console.error('Error generating diagram:', message);
         process.exit(1);

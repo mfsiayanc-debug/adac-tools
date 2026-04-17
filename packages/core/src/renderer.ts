@@ -1,5 +1,5 @@
 import ELK from 'elkjs';
-import { ElkNode, ElkEdge } from '@mindfiredigital/adac-layout-elk';
+import { ElkNode, ElkEdge, ElkLayoutEngine } from '@mindfiredigital/adac-layout-elk';
 import fs from 'fs-extra';
 import { layoutDagre } from '@mindfiredigital/adac-layout-dagre';
 
@@ -79,7 +79,7 @@ const CSS_STYLES = `
 
 export async function renderSvg(
   graph: ElkNode,
-  layoutEngine: 'elk' | 'dagre' = 'elk',
+  layoutEngine: 'elk' | 'custom',
   complianceTooltipMap?: Record<
     string,
     { frameworks: string[]; violations: string[] }
@@ -93,13 +93,14 @@ export async function renderSvg(
 
   // Layout Strategy
   let layout: ElkNode;
-
-  if (layoutEngine === 'dagre') {
-    layout = await layoutDagre(graph);
-  } else {
-    // ELK Layout
-    layout = (await elk.layout(graph)) as ElkNode;
-  }
+  console.log("graph", JSON.stringify(graph))
+  //  Dagre block Layout commented
+  // if (layoutEngine === 'dagre') {
+  //   layout = await layoutDagre(graph);
+  // } else {
+  // layout = (await elk.layout(graph)) as ElkNode;
+  // }
+  layout = (await elk.layout(graph)) as ElkNode;
 
   // --- Normalization Start ---
   const padding = 20;
@@ -413,4 +414,214 @@ export async function renderSvg(
     </defs>
     ${svgContent}
   </svg>`;
+}
+
+// export function renderSvgFromLayout(layout: any): string {
+//   const { nodes, edges, bounds } = layout;
+
+//   let nodeOutput = '';
+//   let edgeOutput = '';
+
+//   // 🔹 Render edges FIRST (background)
+//   for (const edgeId in edges) {
+//     const edge = edges[edgeId];
+//     if (!edge.points) continue;
+
+//     let d = `M ${edge.points[0].x} ${edge.points[0].y}`;
+//     for (let i = 1; i < edge.points.length; i++) {
+//       d += ` L ${edge.points[i].x} ${edge.points[i].y}`;
+//     }
+
+//     edgeOutput += `<path d="${d}" stroke="#545b64" stroke-width="2" fill="none" marker-end="url(#arrow)" />`;
+//   }
+
+//   // 🔹 Render nodes
+//   for (const id in nodes) {
+//     const n = nodes[id];
+
+//     nodeOutput += `
+//       <g>
+//         <rect 
+//           x="${n.x}" 
+//           y="${n.y}" 
+//           width="${n.width}" 
+//           height="${n.height}" 
+//           rx="6" ry="6"
+//           fill="white" 
+//           stroke="#ccc"
+//         />
+//         <text 
+//           x="${n.x + n.width / 2}" 
+//           y="${n.y + n.height / 2}" 
+//           text-anchor="middle"
+//           dominant-baseline="middle"
+//           font-size="12"
+//         >
+//           ${id}
+//         </text>
+//       </g>
+//     `;
+//   }
+
+//   return `
+//     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${bounds.width} ${bounds.height}" style="width: 100%; height: auto; max-width: 100%; background-color: white;">
+//       <defs>
+//         <style>${CSS_STYLES}</style>
+//         <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5"
+//           markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+//           <path d="M 0 0 L 10 5 L 0 10 z" fill="#545b64" />
+//        </marker>
+//       </defs>
+//       ${edgeOutput}
+//       ${nodeOutput}
+//     </svg>
+//   `;
+// }
+
+export function renderSvgFromLayout(layout: any): string {
+  const { nodes, edges, bounds } = layout;
+
+  const padding = 20;
+
+  // --- Normalize like ELK ---
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  Object.values(nodes).forEach((n: any) => {
+    if (n.x < minX) minX = n.x;
+    if (n.y < minY) minY = n.y;
+    if (n.x + n.width > maxX) maxX = n.x + n.width;
+    if (n.y + n.height > maxY) maxY = n.y + n.height;
+  });
+
+  const shiftX = minX !== Infinity ? -minX + padding : 0;
+  const shiftY = minY !== Infinity ? -minY + padding : 0;
+
+  Object.values(nodes).forEach((n: any) => {
+    n.x += shiftX;
+    n.y += shiftY;
+  });
+
+  const width = maxX - minX + 2 * padding || bounds.width || 800;
+  const height = maxY - minY + 2 * padding || bounds.height || 600;
+
+  // --- Render Edges (ELK style) ---
+  let edgeOutput = '';
+
+  Object.values(edges).forEach((edge: any) => {
+    if (!edge.points) return;
+
+    let d = `M ${edge.points[0].x + shiftX} ${edge.points[0].y + shiftY}`;
+
+    for (let i = 1; i < edge.points.length; i++) {
+      d += ` L ${edge.points[i].x + shiftX} ${edge.points[i].y + shiftY}`;
+    }
+
+    edgeOutput += `
+      <path 
+        d="${d}" 
+        class="aws-edge" 
+        marker-end="url(#arrow)" 
+        fill="none"
+      />
+    `;
+  });
+
+  // --- Helper for label wrapping (same as ELK) ---
+  const escapeXml = (unsafe: string) => {
+    const map: Record<string, string> = {
+      '<': '&lt;',
+      '>': '&gt;',
+      '&': '&amp;',
+      "'": '&apos;',
+      '"': '&quot;',
+    };
+    return unsafe.replace(/[<>&'"]/g, (c) => map[c]);
+  };
+
+  // --- Render Nodes (ELK-like) ---
+  let nodeOutput = '';
+
+  Object.entries(nodes).forEach(([id, n]: [string, any]) => {
+    const nodeX = n.x;
+    const nodeY = n.y;
+    const nodeW = n.width;
+    const nodeH = n.height;
+
+    const label = id;
+
+    // simple label split like ELK
+    const words = label.split(' ');
+    let line1 = label;
+    let line2 = '';
+
+    if (words.length > 2 || label.length > 16) {
+      const mid = Math.ceil(words.length / 2);
+      if (words.length > 1) {
+        line1 = words.slice(0, mid).join(' ');
+        line2 = words.slice(mid).join(' ');
+      }
+    }
+
+    nodeOutput += `
+      <g transform="translate(${nodeX}, ${nodeY})">
+        
+        <!-- Node box -->
+        <rect 
+          width="${nodeW}" 
+          height="${nodeH}" 
+          rx="6" ry="6"
+          class="aws-node"
+        />
+
+        <!-- Label -->
+        <text 
+          x="${nodeW / 2}" 
+          y="${nodeH / 2}" 
+          text-anchor="middle"
+          dominant-baseline="middle"
+          class="aws-label-sm"
+        >
+          ${escapeXml(line1)}
+        </text>
+
+        ${
+          line2
+            ? `<text 
+                x="${nodeW / 2}" 
+                y="${nodeH / 2 + 14}" 
+                text-anchor="middle"
+                class="aws-label-sm"
+              >
+                ${escapeXml(line2)}
+              </text>`
+            : ''
+        }
+
+      </g>
+    `;
+  });
+
+  // --- Final SVG ---
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" 
+         viewBox="0 0 ${width} ${height}" 
+         style="width: 100%; height: auto; background: white;">
+
+      <defs>
+        <style>${CSS_STYLES}</style>
+
+        <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5"
+          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#545b64" />
+        </marker>
+      </defs>
+
+      ${edgeOutput}
+      ${nodeOutput}
+
+    </svg>
+  `;
 }
