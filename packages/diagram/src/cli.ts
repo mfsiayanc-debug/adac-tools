@@ -30,7 +30,7 @@ runCLI({
   generateDiagram: async (
     input: string,
     output: string,
-    layoutOverride?: 'elk' | 'dagre' | 'custom',
+    layoutOverride?: 'elk' | 'dagre',
     validate?: boolean,
     _costData?: Record<string, number>,
     period?: string,
@@ -46,7 +46,7 @@ runCLI({
     return generateDiagram(
       input,
       output,
-      layoutOverride,
+      layoutOverride as any,
       validate,
       perServiceCosts,
       period as CostPeriod,
