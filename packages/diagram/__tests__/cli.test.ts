@@ -168,7 +168,7 @@ describe('cli.ts', () => {
         false
       );
     });
-  });
+  
 
   it('should handle undefined pricingModel in generateDiagram', async () => {
     vi.mocked(fs.readFileSync).mockReturnValue(
