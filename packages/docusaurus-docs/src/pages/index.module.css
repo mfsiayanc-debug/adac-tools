@@ -28,7 +28,9 @@
 .buttons .button {
   border-radius: 0.4rem;
   font-weight: 600;
-  transition: transform 0.2s ease, background-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .buttons .button:hover {
